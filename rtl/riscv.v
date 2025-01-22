@@ -26,7 +26,7 @@ module riscv #(
     parameter RV32M = 1,
     parameter RV32E = 0,
     parameter RV32B = 0,
-    parameter RV32C = 0
+    parameter RV32C = 1
 )(
     input                   clk,
     input                   resetb,
@@ -65,9 +65,12 @@ module riscv #(
 
 `define IF_NEXT_PC (4)
 `define EX_NEXT_PC (4)
+`define IF_NEXT_C_PC (2)
+`define EX_NEXT_C_PC (2)
 
     reg                     stall_r;
     wire            [31: 0] inst;
+    reg                     instc;
     reg                     flush;
     reg             [ 1: 0] pipefill;
 
@@ -236,95 +239,240 @@ always @* begin
         OP_SYSTEM: imm      = {20'h0, inst[31:20]};
         default  : imm      = 'd0;
     endcase
+
+    // case for C-Extenstion
+    case(inst[`COPFUNC])
+        // CI-type
+        OP_CLI       : imm  <=  {26'b0, inst[12], inst[6:2]};
+        OP_CADDI     : imm  <=  {26'b0, inst[12], inst[6:2]};
+        OP_CSLLI     : imm  <=  {26'b0, inst[12], inst[6:2]};
+        OP_CLUI      : imm  <=  {14'b0, inst[12], inst[6:2], 12'b0};
+        OP_CLWSP     : imm  <=  {26'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
+        OP_CADDI16SP : imm  <=  {25'b0, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0};
+        // CSS-type
+        OP_SWSP      : imm  <=  {24'b0, inst[8:7], inst[12:9], 2'b0};
+        // CIW-type
+        OP_CADDI4SPN : imm  <=  {24'b0, inst[16:13], inst[12:11], inst[5], inst[6], 2'b0};
+        // CL-type
+        OP_CLW       : imm  <=  {24'b0, inst[13], inst[12:10], inst[6], 2'b0};
+        // CS-type
+        OP_CSW       : imm  <=  {24'b0, inst[13], inst[12:10], inst[6], 2'b0};
+        // CB-type
+        OP_CBEQZ     : imm  <=  {24'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+        OP_CBNEZ     : imm  <=  {24'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+        OP_CSRLI     : imm  <=  {27'b0, inst[6:2]};
+        OP_CSRAI     : imm  <=  {26'b0, inst[12], inst[6:2]};
+        OP_CANDI     : imm  <=  {26'b0, inst[12], inst[6:2]};
+        // CJ-type
+        OP_CJ        : imm  <=  {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
+        OP_CJAL      : imm  <=  {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
+        OP_CSYSTEM   : imm  <=  {3'b100, 1'b1, 5'b0, 5'b0, 2'b10};
+    endcase
 end
 
 always @(posedge clk or negedge resetb)
 begin
     if (!resetb) begin
-        ex_imm              <= 32'h0;
-        ex_imm_sel          <= 1'b0;
-        ex_src1_sel         <= 5'h0;
-        ex_src2_sel         <= 5'h0;
-        ex_dst_sel          <= 5'h0;
-        ex_alu_op           <= 3'h0;
-        ex_subtype          <= 1'b0;
-        ex_memwr            <= 1'b0;
-        ex_alu              <= 1'b0;
-        ex_csr              <= 1'b0;
-        ex_csr_wr           <= 1'b0;
-        ex_lui              <= 1'b0;
-        ex_auipc            <= 1'b0;
-        ex_jal              <= 1'b0;
-        ex_jalr             <= 1'b0;
-        ex_branch           <= 1'b0;
-        ex_system           <= 1'b0;
-        ex_system_op        <= 1'b0;
-        ex_pc               <= RESETVEC;
-        ex_illegal          <= 1'b0;
-        ex_mul              <= 1'b0;
+        ex_imm              <=  32'h0;
+        ex_imm_sel          <=  1'b0;
+        ex_src1_sel         <=  5'h0;
+        ex_src2_sel         <=  5'h0;
+        ex_dst_sel          <=  5'h0;
+        ex_alu_op           <=  3'h0;
+        ex_subtype          <=  1'b0;
+        ex_memwr            <=  1'b0;
+        ex_alu              <=  1'b0;
+        ex_csr              <=  1'b0;
+        ex_csr_wr           <=  1'b0;
+        ex_lui              <=  1'b0;
+        ex_auipc            <=  1'b0;
+        ex_jal              <=  1'b0;
+        ex_jalr             <=  1'b0;
+        ex_branch           <=  1'b0;
+        ex_system           <=  1'b0;
+        ex_system_op        <=  1'b0;
+        ex_pc               <=  RESETVEC;
+        ex_illegal          <=  1'b0;
+        ex_mul              <=  1'b0;
+        instc               <=  1'b0;
     end else if (!if_stall) begin
-        if (inst[`COPCODE]==2'b11)
-        begin
-            ex_imm              <= imm;
-            ex_imm_sel          <= (inst[`OPCODE] == OP_JALR  ) ||
+        ex_imm              <= imm;
+
+        ex_imm_sel          <=  (inst[`OPCODE] == OP_JALR  ) ||
                                 (inst[`OPCODE] == OP_LOAD  ) ||
-                                (inst[`OPCODE] == OP_ARITHI);
-            ex_src1_sel         <= inst[`RS1];
-            ex_src2_sel         <= inst[`RS2];
-            ex_dst_sel          <= inst[`RD];
-            ex_alu_op           <= inst[`FUNC3];
-            ex_subtype          <= inst[`SUBTYPE] &&
+                                (inst[`OPCODE] == OP_ARITHI) ||
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CJR) && (inst[12] == 1'b0) && (inst[`C5RS2] == 5'b0) && (inst[`C5RS1] != 5'b0)) ||      // C.JR
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CJALR) && (inst[12] == 1'b1) && (inst[`C5RS2] == 5'b0) && (inst[`C5RS1] != 5'b0)) ||    // C.JALR
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CLW) ||                                                                                  // C.LW
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CLWSP) ||                                                                                // C.LWSP
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CADDI) && (inst[`C5RS1] != 5'b0)) ||                                                    // C.ADDI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CLI) && (inst[`C5RS1] != 5'b0)) ||                                                      // C.LI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSLLI) && (inst[`C5RS1] != 5'b0)) ||                                                    // C.SLLI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSRLI) && (inst[`CFUNC2] == 2'b00)) ||                                                  // C.SRLI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSRAI) && (inst[`CFUNC2] == 2'b01)) ||                                                  // C.SRAI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CANDI) && (inst[`CFUNC2] == 2'b10));                                                    // C.ANDI
+
+        case(inst[`COPCODE])
+            2'b00:              // CIW-type, CL-type, CS-type
+            begin
+                instc               <=  1'b1;
+                ex_src1_sel         <= {2'b1, inst[`C3RS1]};
+                ex_src2_sel         <= {2'b1, inst[`C3RS2]};
+                ex_dst_sel          <= {2'b1, inst[`C3RD]};
+            end
+            2'b01:
+            begin
+                case(inst[`CFUNC3])
+                
+                    3'b000,     // CI-type
+                    3'b010,     // CI-type
+                    3'b011:     // CI-type
+                    begin
+                        instc       <=  1'b1;
+                        ex_src1_sel <= inst[`C5RS1];
+                        ex_src2_sel <= inst[`C5RS2];
+                        ex_dst_sel  <= inst[`C5RD];
+                    end
+                    3'b001,     // CJ-type
+                    3'b100,     // CA-type, CB-type
+                    3'b101,     // CJ-type
+                    3'b110,     // CB-type
+                    3'b111:     // CB-type
+                    begin
+                        instc       <=  1'b1;
+                        ex_src1_sel <= {2'b1, inst[`C3RS1]};
+                        ex_src2_sel <= {2'b1, inst[`C3RS2]};
+                        ex_dst_sel  <= {2'b1, inst[`C3RD]};
+                    end
+                endcase
+            end
+            2'b10:              // CI-type, CSS-type
+            begin
+                instc               <=  1'b1;
+                ex_src1_sel         <= inst[`C5RS1];
+                ex_src2_sel         <= inst[`C5RS2];
+                ex_dst_sel          <= inst[`C5RD];
+            end
+            2'b11:              // base
+            begin
+                instc               <=  1'b0;
+                ex_src1_sel         <= inst[`RS1];
+                ex_src2_sel         <= inst[`RS2];
+                ex_dst_sel          <= inst[`RD];
+            end
+        endcase
+
+        case(inst[`COPCODE])
+            2'b11:
+                ex_alu_op       <= inst[`FUNC3];
+            default:
+            begin
+                // c-ext
+                case({inst[`CFUNC3], inst[`COPCODE]})
+                    OP_CLW:     ex_alu_op   <=  OP_LW;
+                    OP_CLWSP:   ex_alu_op   <=  OP_LW;
+                    OP_CSW:     ex_alu_op   <=  OP_SW;
+                    OP_CSWSP:   ex_alu_op   <=  OP_SW;
+                    OP_CLUI:    ex_alu_op   <=  OP_LUI;
+                    OP_CXOR:    ex_alu_op   <=  OP_XOR;
+                    OP_COR:     ex_alu_op   <=  OP_OR;
+                    OP_CAND:    ex_alu_op   <=  OP_AND;
+                    OP_CBEQZ:   ex_alu_op   <=  OP_BEQ;
+                    OP_CBNEZ:   ex_alu_op   <=  OP_BNE;
+                    OP_CMV:     ex_alu_op   <=  OP_ADD;
+                    OP_CADD:    ex_alu_op   <=  OP_ADD;
+                endcase
+            end
+        endcase
+
+        ex_subtype          <=  inst[`SUBTYPE] &&
                                 !(inst[`OPCODE] == OP_ARITHI && inst[`FUNC3] == OP_ADD);
-            ex_memwr            <= inst[`OPCODE] == OP_STORE;
-            ex_alu              <= (inst[`OPCODE] == OP_ARITHI) ||
-                                ((inst[`OPCODE] == OP_ARITHR) &&
-                                    (inst[`FUNC7] == 'h00 || inst[`FUNC7] == 'h20));
-            ex_csr              <= (inst[`OPCODE] == OP_SYSTEM) &&
-                                (inst[`FUNC3] != OP_ECALL);
+        
+        ex_memwr            <=  (inst[`OPCODE] == OP_STORE) || 
+                                // c-ext
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CSW) ||                                                                          // C.SW
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CSWSP);                                                                          // C.SWSP
+
+        ex_alu              <=  (inst[`OPCODE] == OP_ARITHI) ||
+                                ((inst[`OPCODE] == OP_ARITHR) && (inst[`FUNC7] == 'h00 || inst[`FUNC7] == 'h20)) ||
+                                // c-ext
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CADD) && (inst[12]) && (inst[`CRD] != 5'b0) && (inst[`C5RS2] != 5'b0)) ||       // C.ADD
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CMV) && (!inst[12]) && (inst[`CRD] != 5'b0) && (inst[`C5RS2] != 5'b0)) ||       // C.MV
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSUB) && (inst[`CFUNC6] == 6'b100011)) ||                                       // C.SUB, C.XOR, C.OR, C.AND
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CADDI) && (inst[`C5RS1] != 5'b0)) ||                                            // C.ADDI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CLI) && (inst[`C5RS1] != 5'b0)) ||                                              // C.LI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSLLI) && (inst[`C5RS1] != 5'b0)) ||                                            // C.SLLI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSRLI) && (inst[`CFUNC2] == 2'b00)) ||                                          // C.SRLI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSRAI) && (inst[`CFUNC2] == 2'b01)) ||                                          // C.SRAI
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CANDI) && (inst[`CFUNC2] == 2'b10));                                            // C.ANDI
+
+        ex_csr              <= (inst[`OPCODE] == OP_SYSTEM) &&
+                               (inst[`FUNC3] != OP_ECALL);
                                 // CSRRS and CSRRC, if rs1==0, then the instruction
                                 // will not write to the CSR at all
-            ex_csr_wr           <= (inst[`OPCODE] == OP_SYSTEM) &&
+        
+        ex_csr_wr           <=  (inst[`OPCODE] == OP_SYSTEM) &&
                                 (inst[`FUNC3] != OP_ECALL) &&
-                                !(inst[`FUNC3] != OP_CSRRW && inst[`FUNC3] != OP_CSRRWI &&
-                                    inst[`RS1] == 5'h0);
-            ex_lui              <= inst[`OPCODE] == OP_LUI;
-            ex_auipc            <= inst[`OPCODE] == OP_AUIPC;
-            ex_jal              <= inst[`OPCODE] == OP_JAL;
-            ex_jalr             <= inst[`OPCODE] == OP_JALR;
-            ex_branch           <= inst[`OPCODE] == OP_BRANCH;
-            ex_system           <= (inst[`OPCODE] == OP_SYSTEM) &&
-                                (inst[`FUNC3] == 3'b000);
-            ex_system_op        <= inst[`OPCODE] == OP_SYSTEM;
-            ex_pc               <= if_pc;
-            ex_illegal          <= !((inst[`OPCODE] == OP_AUIPC )||
-                                    (inst[`OPCODE] == OP_LUI   )||
-                                    (inst[`OPCODE] == OP_JAL   )||
-                                    (inst[`OPCODE] == OP_JALR  )||
-                                    (inst[`OPCODE] == OP_BRANCH)||
-                                    ((inst[`OPCODE] == OP_LOAD ) &&
-                                    ((inst[`FUNC3] == OP_LB) ||
-                                    (inst[`FUNC3] == OP_LH) ||
-                                    (inst[`FUNC3] == OP_LW) ||
-                                    (inst[`FUNC3] == OP_LBU) ||
-                                    (inst[`FUNC3] == OP_LHU))) ||
-                                    ((inst[`OPCODE] == OP_STORE) &&
-                                    ((inst[`FUNC3] == OP_SB) ||
-                                    (inst[`FUNC3] == OP_SH) ||
-                                    (inst[`FUNC3] == OP_SW))) ||
-                                    (inst[`OPCODE] == OP_ARITHI)||
-                                    ((inst[`OPCODE] == OP_ARITHR) &&
-                                    (inst[`FUNC7] == 'h00 || inst[`FUNC7] == 'h20)) ||
-                                    ((inst[`OPCODE] == OP_ARITHR) && (inst[`FUNC7] == 'h01) &&
-                                    (RV32M == 1)) ||
-                                    (inst[`OPCODE] == OP_FENCE )||
-                                    (inst[`OPCODE] == OP_SYSTEM));
-            ex_mul              <= (inst[`OPCODE] == OP_ARITHR) && (inst[`FUNC7] == 'h1) &&
-                                (RV32M == 1);
-        end
-        else
-        begin
+                                !(inst[`FUNC3] != OP_CSRRW && inst[`FUNC3] != OP_CSRRWI && inst[`RS1] == 5'h0);
 
-        end
+        ex_lui              <=  (inst[`OPCODE] == OP_LUI) ||
+                                // c-ext
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CLUI) && (inst[`RD] != 5'd0) && (inst[`RD] != 5'd1) && (inst[`RD] != 5'd2));    // C.LUI
+
+        ex_auipc            <=  inst[`OPCODE] == OP_AUIPC;
+
+        ex_jal              <=  (inst[`OPCODE] == OP_JAL) ||
+                                // c-ext
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CJ) ||                                                                           // C.J
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CJAL);                                                                           // C.JAL
+
+        ex_jalr             <=  (inst[`OPCODE] == OP_JALR) ||
+                                // c-ext
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CJR) && (!inst[12]) && (inst[`C5RS1] != 5'b0) && (inst[`C5RS2] == 5'b0)) ||     // C.JR
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CJALR) && (inst[12]) && (inst[`C5RS1] != 5'b0) && (inst[`C5RS2] == 5'b0)) ;     // C.JALR
+
+        ex_branch           <=  (inst[`OPCODE] == OP_BRANCH) ||
+                                // c-ext
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CBEQZ) ||                                                                        // C.BEQZ
+                                ({inst[`CFUNC3], inst[`COPCODE]} == OP_CBNEZ);                                                                          // C.BNEZ
+
+        ex_system           <=  ((inst[`OPCODE] == OP_SYSTEM) && (inst[`FUNC3] == 3'b000)) || 
+                                // c-ext
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CSYSTEM) && (inst[12]) && (inst[`CRD] == 5'b0) && (inst[`C5RS2] == 5'b0));
+
+        ex_system_op        <=  (inst[`OPCODE] == OP_SYSTEM) ||
+                                // c-ext
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CSYSTEM) && (inst[12]) && (inst[`CRD] == 5'b0) && (inst[`C5RS2] == 5'b0));
+
+        ex_pc               <=  if_pc;
+
+        ex_illegal          <=  !((inst[`OPCODE] == OP_AUIPC ) ||
+                                (inst[`OPCODE] == OP_LUI   ) ||
+                                (inst[`OPCODE] == OP_JAL   ) ||
+                                (inst[`OPCODE] == OP_JALR  ) ||
+                                (inst[`OPCODE] == OP_BRANCH) ||
+                                ((inst[`OPCODE] == OP_LOAD ) &&
+                                ((inst[`FUNC3] == OP_LB) ||
+                                (inst[`FUNC3] == OP_LH) ||
+                                (inst[`FUNC3] == OP_LW) ||
+                                (inst[`FUNC3] == OP_LBU) ||
+                                (inst[`FUNC3] == OP_LHU))) ||
+                                ((inst[`OPCODE] == OP_STORE) &&
+                                ((inst[`FUNC3] == OP_SB) ||
+                                (inst[`FUNC3] == OP_SH) ||
+                                (inst[`FUNC3] == OP_SW))) ||
+                                (inst[`OPCODE] == OP_ARITHI) ||
+                                ((inst[`OPCODE] == OP_ARITHR) &&
+                                (inst[`FUNC7] == 'h00 || inst[`FUNC7] == 'h20)) ||
+                                ((inst[`OPCODE] == OP_ARITHR) && (inst[`FUNC7] == 'h01) &&
+                                (RV32M == 1)) ||
+                                (inst[`OPCODE] == OP_FENCE ) ||
+                                (inst[`OPCODE] == OP_SYSTEM) ||
+                                // c-ext
+                                (inst[`CINST] == 16'b0));
+
+        ex_mul              <=  (inst[`OPCODE] == OP_ARITHR) && (inst[`FUNC7] == 'h1) &&
+                                (RV32M == 1);
     end
 end
 
@@ -400,7 +548,7 @@ assign result_jalr          = alu_op1 + ex_imm;
 
 always @* begin
     branch_taken  = !ex_flush;
-    next_pc       = fetch_pc + `IF_NEXT_PC;
+    next_pc       = (instc) ? (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
     ex_ill_branch = 1'b0;
 
     case(1'b1)
@@ -410,32 +558,38 @@ always @* begin
             case(ex_alu_op)
                 OP_BEQ : begin
                             next_pc = (result_subs[32: 0] == 'd0) ?
-                                      ex_pc + ex_imm : fetch_pc + `IF_NEXT_PC;
+                                      (ex_pc + ex_imm) : (instc) ?
+                                      (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                             if (result_subs[32: 0] != 'd0) branch_taken = 1'b0;
                          end
                 OP_BNE : begin
                             next_pc = (result_subs[32: 0] != 'd0) ?
-                                      ex_pc + ex_imm : fetch_pc + `IF_NEXT_PC;
+                                      (ex_pc + ex_imm) : (instc) ?
+                                      (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                             if (result_subs[32: 0] == 'd0) branch_taken = 1'b0;
                          end
                 OP_BLT : begin
                             next_pc = result_subs[32] ?
-                                      ex_pc + ex_imm : fetch_pc + `IF_NEXT_PC;
+                                      (ex_pc + ex_imm) : (instc) ?
+                                      (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                             if (!result_subs[32]) branch_taken = 1'b0;
                          end
                 OP_BGE : begin
                             next_pc = !result_subs[32] ?
-                                      ex_pc + ex_imm : fetch_pc + `IF_NEXT_PC;
+                                      (ex_pc + ex_imm) : (instc) ?
+                                      (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                             if (result_subs[32]) branch_taken = 1'b0;
                          end
                 OP_BLTU: begin
                             next_pc = result_subu[32] ?
-                                      ex_pc + ex_imm : fetch_pc + `IF_NEXT_PC;
+                                      (ex_pc + ex_imm) : (instc) ?
+                                      (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                             if (!result_subu[32]) branch_taken = 1'b0;
                          end
                 OP_BGEU: begin
                             next_pc = !result_subu[32] ?
-                                      ex_pc + ex_imm : fetch_pc + `IF_NEXT_PC;
+                                      (ex_pc + ex_imm) : (instc) ?
+                                      (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                             if (result_subu[32]) branch_taken = 1'b0;
                          end
                 default: begin
@@ -445,7 +599,7 @@ always @* begin
             endcase
         end
         default  : begin
-                   next_pc          = fetch_pc + `IF_NEXT_PC;
+                   next_pc          = (instc) ? (fetch_pc + `IF_NEXT_C_PC) : (fetch_pc + `IF_NEXT_PC);
                    branch_taken     = 1'b0;
                    end
     endcase
@@ -502,8 +656,8 @@ endgenerate
 always @* begin
     case(1'b1)
         ex_memwr:   ex_result           = alu_op2;
-        ex_jal:     ex_result           = ex_pc + `EX_NEXT_PC;
-        ex_jalr:    ex_result           = ex_pc + `EX_NEXT_PC;
+        ex_jal:     ex_result           = (instc) ? (ex_pc + `EX_NEXT_C_PC) : (ex_pc + `EX_NEXT_PC);
+        ex_jalr:    ex_result           = (instc) ? (ex_pc + `EX_NEXT_C_PC) : (ex_pc + `EX_NEXT_PC);
         ex_lui:     ex_result           = ex_imm;
         ex_auipc:   ex_result           = ex_pc + ex_imm;
         ex_csr:     ex_result           = ex_csr_read;
@@ -548,10 +702,16 @@ end
 always @(posedge clk or negedge resetb) begin
     if (!resetb) begin
         fetch_pc            <= RESETVEC;
-    end else if (!ex_stall) begin
-        fetch_pc            <= (ex_flush) ? (fetch_pc + `EX_NEXT_PC) :
-                               (ex_trap)  ? (ex_trap_pc)   :
-                               {next_pc[31:1], 1'b0};
+    end else if (!ex_stall)
+    begin
+        if(instc)
+            fetch_pc            <= (ex_flush) ? (fetch_pc + `EX_NEXT_C_PC) :
+                                (ex_trap)  ? (ex_trap_pc)   :
+                                {next_pc[31:1], 1'b0};
+        else
+            fetch_pc            <= (ex_flush) ? (fetch_pc + `EX_NEXT_PC) :
+                                (ex_trap)  ? (ex_trap_pc)   :
+                                {next_pc[31:1], 1'b0};
     end
 end
 
