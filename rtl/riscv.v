@@ -398,8 +398,8 @@ begin
         ex_alu              <=  (inst[`OPCODE] == OP_ARITHI) ||
                                 ((inst[`OPCODE] == OP_ARITHR) && (inst[`FUNC7] == 'h00 || inst[`FUNC7] == 'h20)) ||
                                 // c-ext
-                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CADD) && (inst[12]) && (inst[`CRD] != 5'b0) && (inst[`C5RS2] != 5'b0)) ||       // C.ADD
-                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CMV) && (!inst[12]) && (inst[`CRD] != 5'b0) && (inst[`C5RS2] != 5'b0)) ||       // C.MV
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CADD) && (inst[12]) && (inst[`C5RD] != 5'b0) && (inst[`C5RS2] != 5'b0)) ||      // C.ADD
+                                (({inst[`COPCODE], inst[`CFUNC3]} == OP_CMV) && (!inst[12]) && (inst[`C5RD] != 5'b0) && (inst[`C5RS2] != 5'b0)) ||      // C.MV
                                 (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSUB) && (inst[`CFUNC6] == 6'b100011)) ||                                       // C.SUB, C.XOR, C.OR, C.AND
                                 (({inst[`COPCODE], inst[`CFUNC3]} == OP_CADDI) && (inst[`C5RS1] != 5'b0)) ||                                            // C.ADDI
                                 (({inst[`COPCODE], inst[`CFUNC3]} == OP_CLI) && (inst[`C5RS1] != 5'b0)) ||                                              // C.LI
@@ -440,11 +440,11 @@ begin
 
         ex_system           <=  ((inst[`OPCODE] == OP_SYSTEM) && (inst[`FUNC3] == 3'b000)) || 
                                 // c-ext
-                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CSYSTEM) && (inst[12]) && (inst[`CRD] == 5'b0) && (inst[`C5RS2] == 5'b0));
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CSYSTEM) && (inst[12]) && (inst[`C5RD] == 5'b0) && (inst[`C5RS2] == 5'b0));
 
         ex_system_op        <=  (inst[`OPCODE] == OP_SYSTEM) ||
                                 // c-ext
-                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CSYSTEM) && (inst[12]) && (inst[`CRD] == 5'b0) && (inst[`C5RS2] == 5'b0));
+                                (({inst[`CFUNC3], inst[`COPCODE]} == OP_CSYSTEM) && (inst[12]) && (inst[`C5RD] == 5'b0) && (inst[`C5RS2] == 5'b0));
 
         ex_pc               <=  if_pc;
 
