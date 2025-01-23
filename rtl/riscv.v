@@ -267,7 +267,7 @@ always @* begin
         // CJ-type
         OP_CJ        : imm  =   {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
         OP_CJAL      : imm  =   {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
-        OP_CSYSTEM   : imm  =   32'b1;
+        OP_CSYSTEM   : imm  =   (inst[`C5RD] == 0 && inst[`C5RS2] == 0) ? 32'b1 : 32'b0;
         default      : imm  =   'd0;
     endcase
 end
