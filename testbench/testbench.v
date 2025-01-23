@@ -317,7 +317,7 @@ end
     wire            imem_rresp;
     wire    [31: 0] imem_rdata;
     // tst
-    wire    [31: 0] imem_addr_i;
+    wire    [30: 0] imem_addr_i;
 
     wire            dmem_wready;
     wire            dmem_wvalid;
