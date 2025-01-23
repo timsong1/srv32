@@ -261,9 +261,9 @@ always @* begin
         // CB-type
         OP_CBEQZ     : imm  =   {23'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
         OP_CBNEZ     : imm  =   {23'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
-        OP_CSRLI     : imm  =   {27'b0, inst[6:2]};
-        OP_CSRAI     : imm  =   {26'b0, inst[12], inst[6:2]};
-        OP_CANDI     : imm  =   {26'b0, inst[12], inst[6:2]};
+        OP_CSRLI     : imm  =   (inst[11:10]==2'b0) ? {27'b0, inst[6:2]} :
+                                (inst[11:10]==2'b1) ? {26'b0, inst[12], inst[6:2]} : 
+                                {26'b0, inst[12], inst[6:2]};
         // CJ-type
         OP_CJ        : imm  =   {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
         OP_CJAL      : imm  =   {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
