@@ -410,11 +410,11 @@ begin
                                 (({inst[`COPCODE], inst[`CFUNC3]} == OP_CSRAI) && (inst[`CFUNC2] == 2'b01)) ||                                          // C.SRAI
                                 (({inst[`COPCODE], inst[`CFUNC3]} == OP_CANDI) && (inst[`CFUNC2] == 2'b10));                                            // C.ANDI
 
-        ex_csr              <= (inst[`OPCODE] == OP_SYSTEM) &&
-                               (inst[`FUNC3] != OP_ECALL);
+        ex_csr              <=  ((inst[`OPCODE] == OP_SYSTEM) && (inst[`FUNC3] != OP_ECALL)) ||
+                                (inst[`CINST] == 4'h9002);
+
                                 // CSRRS and CSRRC, if rs1==0, then the instruction
                                 // will not write to the CSR at all
-        
         ex_csr_wr           <=  (inst[`OPCODE] == OP_SYSTEM) &&
                                 (inst[`FUNC3] != OP_ECALL) &&
                                 !(inst[`FUNC3] != OP_CSRRW && inst[`FUNC3] != OP_CSRRWI && inst[`RS1] == 5'h0);
