@@ -396,7 +396,7 @@ assign imem_raddr_i = imem_addr[31:1]-(IRAMBASE/2);
         .wready(1'b0),
         .rresp (imem_rresp),
         .rdata (imem_rdata),
-        .raddr (imem_addr_i),
+        .raddr (imem_raddr_i),
         .waddr (30'h0),
         .wdata (32'h0),
         .wstrb (4'h0)
