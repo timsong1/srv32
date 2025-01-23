@@ -301,6 +301,7 @@ begin
         ex_imm_sel          <=  (inst[`OPCODE] == OP_JALR  ) ||
                                 (inst[`OPCODE] == OP_LOAD  ) ||
                                 (inst[`OPCODE] == OP_ARITHI) ||
+                                // c-ext
                                 (({inst[`CFUNC3], inst[`COPCODE]} == OP_CJR) && (inst[12] == 1'b0) && (inst[`C5RS2] == 5'b0) && (inst[`C5RS1] != 5'b0)) ||      // C.JR
                                 (({inst[`CFUNC3], inst[`COPCODE]} == OP_CJALR) && (inst[12] == 1'b1) && (inst[`C5RS2] == 5'b0) && (inst[`C5RS1] != 5'b0)) ||    // C.JALR
                                 ({inst[`CFUNC3], inst[`COPCODE]} == OP_CLW) ||                                                                                  // C.LW
@@ -323,7 +324,6 @@ begin
             2'b01:
             begin
                 case(inst[`CFUNC3])
-                
                     3'b000,     // CI-type
                     3'b010,     // CI-type
                     3'b011:     // CI-type
@@ -385,7 +385,7 @@ begin
             end
         endcase
 
-        ex_subtype          <=  (inst[`SUBTYPE] && !(inst[`OPCODE] == OP_ARITHI && inst[`FUNC3] == OP_ADD)) ||
+        ex_subtype          <=  (inst[`SUBTYPE] && !(inst[`OPCODE] == OP_ARITHI && inst[`FUNC3] == OP_ADD));
                                 // c-ext
         
         ex_memwr            <=  (inst[`OPCODE] == OP_STORE) || 
