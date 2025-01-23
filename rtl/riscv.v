@@ -251,7 +251,7 @@ always @* begin
         OP_CLWSP     : imm  =   {26'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
         OP_CADDI16SP : imm  =   {25'b0, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0};
         // CSS-type
-        OP_SWSP      : imm  =   {24'b0, inst[8:7], inst[12:9], 2'b0};
+        OP_CSWSP     : imm  =   {24'b0, inst[8:7], inst[12:9], 2'b0};
         // CIW-type
         OP_CADDI4SPN : imm  =   {24'b0, inst[16:13], inst[12:11], inst[5], inst[6], 2'b0};
         // CL-type
