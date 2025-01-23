@@ -249,8 +249,7 @@ always @* begin
         OP_CSLLI     : imm  =   {26'b0, inst[12], inst[6:2]};
         // C.LUI & C.ADDI16SP
         OP_CLUI      : imm  =   (inst[`C5RD]==5'd2) ? {22'b0, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0} : {14'b0, inst[12], inst[6:2], 12'b0};
-        OP_CLWSP     : imm  =   {22'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
-        OP_CLWSP     : imm  =   {22'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
+        OP_CLWSP     : imm  =   {24'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
         // CSS-type
         OP_CSWSP     : imm  =   {24'b0, inst[8:7], inst[12:9], 2'b0};
         // CIW-type
@@ -377,7 +376,6 @@ begin
                     OP_CSWSP:   ex_alu_op   <=  OP_SW;
                     OP_CBEQZ:   ex_alu_op   <=  OP_BEQ;
                     OP_CBNEZ:   ex_alu_op   <=  OP_BNE;
-                    OP_CMV:     ex_alu_op   <=  OP_ADD;
                     OP_CADD:    ex_alu_op   <=  OP_ADD;
                     OP_COR:
                     case(inst[6:5])
