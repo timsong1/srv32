@@ -384,6 +384,7 @@ begin
                         2'b10:  ex_alu_op   <=  OP_OR;
                         2'b11:  ex_alu_op   <=  OP_AND;
                     endcase
+                    default:    ex_alu_op   <=  3'b0;
                 endcase
             end
         endcase
