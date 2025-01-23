@@ -377,14 +377,16 @@ begin
                     OP_CSWSP:   ex_alu_op   <=  OP_SW;
                     OP_CBEQZ:   ex_alu_op   <=  OP_BEQ;
                     OP_CBNEZ:   ex_alu_op   <=  OP_BNE;
-                    OP_CADD:    ex_alu_op   <=  OP_ADD;
+                    OP_CADD:    if(inst[`C5RD] != 5'b0 && inst[`C5RS2] != 5'b0) ex_alu_op <= OP_ADD;
                     OP_COR:
-                    case(inst[6:5])
-                        2'b00:  ex_alu_op   <=  OP_ADD;
-                        2'b01:  ex_alu_op   <=  OP_XOR;
-                        2'b10:  ex_alu_op   <=  OP_OR;
-                        2'b11:  ex_alu_op   <=  OP_AND;
-                    endcase
+                    begin
+                        case(inst[6:5])
+                            2'b00:  ex_alu_op   <=  OP_ADD;
+                            2'b01:  ex_alu_op   <=  OP_XOR;
+                            2'b10:  ex_alu_op   <=  OP_OR;
+                            2'b11:  ex_alu_op   <=  OP_AND;
+                        endcase
+                    end
                     default:    ;
                 endcase
             end
