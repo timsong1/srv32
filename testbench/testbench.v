@@ -316,8 +316,6 @@ end
     wire    [31: 0] imem_addr;
     wire            imem_rresp;
     wire    [31: 0] imem_rdata;
-    // tst
-    // wire    [30: 0] imem_addr_i;
 
     wire            dmem_wready;
     wire            dmem_wvalid;
@@ -398,7 +396,7 @@ assign imem_raddr_i = imem_addr[31:1]-(IRAMBASE/2);
         .wready(1'b0),
         .rresp (imem_rresp),
         .rdata (imem_rdata),
-        // .raddr (imem_addr_i),
+        .raddr (imem_addr_i),
         .waddr (30'h0),
         .wdata (32'h0),
         .wstrb (4'h0)
@@ -419,7 +417,7 @@ assign imem_raddr_i[29:0] = imem_addr[31:2]-(IRAMBASE/4);
         .wready(1'b0),
         .rresp (imem_rresp),
         .rdata (imem_rdata),
-        // .raddr (imem_raddr_i),
+        .raddr (imem_raddr_i),
         .waddr (30'h0),
         .wdata (32'h0),
         .wstrb (4'h0)
@@ -712,4 +710,3 @@ end
 endmodule
 
 /* verilator coverage_on */
-
