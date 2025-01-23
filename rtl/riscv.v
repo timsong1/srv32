@@ -381,7 +381,7 @@ begin
                     OP_CADD:    ex_alu_op   <=  OP_ADD;
                     OP_COR:
                     case(inst[6:5])
-                        2'b00:  ex_alu_op   <=  OP_SUB;
+                        2'b00:  ex_alu_op   <=  OP_ADD;
                         2'b01:  ex_alu_op   <=  OP_XOR;
                         2'b10:  ex_alu_op   <=  OP_OR;
                         2'b11:  ex_alu_op   <=  OP_AND;
