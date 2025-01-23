@@ -351,9 +351,12 @@ begin
             2'b10:              // CI-type, CSS-type
             begin
                 instc               <=  1'b1;
-                ex_src1_sel         <= inst[`C5RS1];
-                ex_src2_sel         <= inst[`C5RS2];
-                ex_dst_sel          <= inst[`C5RD];
+                if (!(inst[`C5RD] == 5'b0 && inst[`C5RS2] == 5'b0))
+                begin
+                    ex_src1_sel         <= inst[`C5RS1];
+                    ex_src2_sel         <= inst[`C5RS2];
+                    ex_dst_sel          <= inst[`C5RD];
+                end
             end
             2'b11:              // base
             begin
@@ -377,7 +380,7 @@ begin
                     OP_CSWSP:   ex_alu_op   <=  OP_SW;
                     OP_CBEQZ:   ex_alu_op   <=  OP_BEQ;
                     OP_CBNEZ:   ex_alu_op   <=  OP_BNE;
-                    OP_CADD:    if(inst[`C5RD] != 5'b0 && inst[`C5RS2] != 5'b0) ex_alu_op <= OP_ADD;
+                    OP_CADD:    ex_alu_op   <=  OP_ADD;
                     OP_COR:
                     begin
                         case(inst[6:5])
@@ -414,6 +417,7 @@ begin
                                 (({inst[`COPCODE], inst[`CFUNC3]} == OP_CANDI) && (inst[`CFUNC2] == 2'b10));                                            // C.ANDI
 
         ex_csr              <=  ((inst[`OPCODE] == OP_SYSTEM) && (inst[`FUNC3] != OP_ECALL)) ||
+                                // c-ext
                                 (inst[`CINST] == 16'h9002);
 
                                 // CSRRS and CSRRC, if rs1==0, then the instruction
