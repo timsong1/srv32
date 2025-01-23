@@ -385,8 +385,8 @@ begin
             end
         endcase
 
-        ex_subtype          <=  inst[`SUBTYPE] &&
-                                !(inst[`OPCODE] == OP_ARITHI && inst[`FUNC3] == OP_ADD);
+        ex_subtype          <=  (inst[`SUBTYPE] && !(inst[`OPCODE] == OP_ARITHI && inst[`FUNC3] == OP_ADD)) ||
+                                // c-ext
         
         ex_memwr            <=  (inst[`OPCODE] == OP_STORE) || 
                                 // c-ext

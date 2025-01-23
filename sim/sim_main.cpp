@@ -33,6 +33,7 @@ void elfread(char *filename)
         printf("memory allocate failure\n");
         exit(1);
     }
+    
     if (elfloader(filename, (char*)mem, 0, memsize, memsize, memsize) == 0) {
         printf("Can not read elf file %s\n", filename);
         exit(1);
