@@ -37,7 +37,7 @@
 `define C3RS2       4:2
 `define C5RS2       6:2
 `define IMM12       31:20
-`define CINST       31:0
+`define CINST       15:0
 
 localparam  [31: 0] RESETVEC   = 32'h0000_0000;
 

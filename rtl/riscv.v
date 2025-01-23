@@ -247,27 +247,27 @@ always @* begin
         OP_CLI       : imm  =   {26'b0, inst[12], inst[6:2]};
         OP_CADDI     : imm  =   {26'b0, inst[12], inst[6:2]};
         OP_CSLLI     : imm  =   {26'b0, inst[12], inst[6:2]};
-        OP_CLUI      : imm  =   {14'b0, inst[12], inst[6:2], 12'b0};
-        OP_CLWSP     : imm  =   {26'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
-        OP_CADDI16SP : imm  =   {25'b0, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0};
+        // C.LUI & C.ADDI16SP
+        OP_CLUI      : imm  =   (inst[`C5RD]==5'd2) ? {22'b0, inst[12], inst[4:3], inst[5], inst[2], inst[6], 4'b0} : {14'b0, inst[12], inst[6:2], 12'b0};
+        OP_CLWSP     : imm  =   {22'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
+        OP_CLWSP     : imm  =   {22'b0, inst[3:2], inst[12], inst[6:4], 2'b0};
         // CSS-type
         OP_CSWSP     : imm  =   {24'b0, inst[8:7], inst[12:9], 2'b0};
         // CIW-type
-        OP_CADDI4SPN : imm  =   {24'b0, inst[16:13], inst[12:11], inst[5], inst[6], 2'b0};
+        OP_CADDI4SPN : imm  =   {22'b0, inst[10:7], inst[12:11], inst[5], inst[6], 2'b0};
         // CL-type
-        OP_CLW       : imm  =   {24'b0, inst[13], inst[12:10], inst[6], 2'b0};
+        OP_CLW       : imm  =   {25'b0, inst[5], inst[12:10], inst[6], 2'b0};
         // CS-type
-        OP_CSW       : imm  =   {24'b0, inst[13], inst[12:10], inst[6], 2'b0};
+        OP_CSW       : imm  =   {25'b0, inst[5], inst[12:10], inst[6], 2'b0};
         // CB-type
-        OP_CBEQZ     : imm  =   {24'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
-        OP_CBNEZ     : imm  =   {24'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+        OP_CBEQZ     : imm  =   {23'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
+        OP_CBNEZ     : imm  =   {23'b0, inst[12], inst[6:5], inst[2], inst[11:10], inst[4:3], 1'b0};
         OP_CSRLI     : imm  =   {27'b0, inst[6:2]};
         OP_CSRAI     : imm  =   {26'b0, inst[12], inst[6:2]};
         OP_CANDI     : imm  =   {26'b0, inst[12], inst[6:2]};
         // CJ-type
         OP_CJ        : imm  =   {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
         OP_CJAL      : imm  =   {20'b0, inst[12], inst[8], inst[10:9], inst[7], inst[6], inst[2], inst[11], inst[4:2], 1'b0};
-        OP_CSYSTEM   : imm  =   {3'b100, 1'b1, 5'b0, 5'b0, 2'b10};
         default      : imm  =   'd0;
     endcase
 end
@@ -375,14 +375,17 @@ begin
                     OP_CLWSP:   ex_alu_op   <=  OP_LW;
                     OP_CSW:     ex_alu_op   <=  OP_SW;
                     OP_CSWSP:   ex_alu_op   <=  OP_SW;
-                    OP_CLUI:    ex_alu_op   <=  OP_LUI;
-                    OP_CXOR:    ex_alu_op   <=  OP_XOR;
-                    OP_COR:     ex_alu_op   <=  OP_OR;
-                    OP_CAND:    ex_alu_op   <=  OP_AND;
                     OP_CBEQZ:   ex_alu_op   <=  OP_BEQ;
                     OP_CBNEZ:   ex_alu_op   <=  OP_BNE;
                     OP_CMV:     ex_alu_op   <=  OP_ADD;
                     OP_CADD:    ex_alu_op   <=  OP_ADD;
+                    OP_COR:
+                    case(inst[6:5])
+                        2'b00:  ex_alu_op   <=  OP_SUB;
+                        2'b01:  ex_alu_op   <=  OP_XOR;
+                        2'b10:  ex_alu_op   <=  OP_OR;
+                        2'b11:  ex_alu_op   <=  OP_AND;
+                    endcase
                 endcase
             end
         endcase
