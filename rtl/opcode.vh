@@ -28,7 +28,8 @@
 `define FUNC7       31:25
 `define SUBTYPE     30
 `define RD          11:7
-`define CRD         9:7
+`define C5RD        11:7
+`define C3RD        9:7
 `define RS1         19:15
 `define C3RS1       9:7
 `define C5RS1       11:7
